@@ -1,28 +1,16 @@
-import React, { useEffect, useRef, useState } from 'react';
+import React, { useEffect, useMemo, useRef, useState } from 'react';
 import * as d3 from 'd3';
 import * as topojson from 'topojson-client';
 import { CountryData, VisaType } from '../types';
 import { GEO_URL } from '../constants';
 
-// Mapping from ISO 3166-1 numeric code (from topojson) to our Data IDs
-const NUMERIC_TO_ID: Record<string, string> = {
-  "764": "THA", "702": "SGP", "458": "MYS", "398": "KAZ", "784": "ARE",
-  "634": "QAT", "268": "GEO", "860": "UZB", "364": "IRN", "410": "KOR_JEJU",
-  "360": "IDN", "418": "LAO", "116": "KHM", "524": "NPL", "144": "LKA",
-  "462": "MDV", "048": "BHR", "400": "JOR", "704": "VNM", "504": "MAR",
-  "788": "TUN", "480": "MUS", "690": "SYC", "818": "EGY", "834": "TZA",
-  "404": "KEN", "450": "MDG", "024": "AGO", "508": "MOZ", "688": "SRB",
-  "070": "BIH", "051": "ARM", "112": "BLR", "008": "ALB", "674": "SMR",
-  "052": "BRB", "044": "BHS", "218": "ECU", "212": "DMA", "192": "CUB",
-  "242": "FJI", "776": "TON", "882": "WSM", "296": "KIR", "580": "MNP"
-};
-
 interface WorldMapProps {
   countries: CountryData[];
+  showAllCountries: boolean;
   onCountrySelect: (country: CountryData) => void;
 }
 
-const WorldMap: React.FC<WorldMapProps> = ({ countries, onCountrySelect }) => {
+const WorldMap: React.FC<WorldMapProps> = ({ countries, showAllCountries, onCountrySelect }) => {
   const svgRef = useRef<SVGSVGElement>(null);
   const containerRef = useRef<HTMLDivElement>(null);
   const [geoData, setGeoData] = useState<any>(null);
@@ -50,13 +38,20 @@ const WorldMap: React.FC<WorldMapProps> = ({ countries, onCountrySelect }) => {
     }).catch(err => console.error("Map data load failed", err));
   }, []);
 
+  const countriesByMapId = useMemo(() => {
+    const map = new Map<string, CountryData>();
+    countries.forEach(country => {
+      if (country.mapId) {
+        map.set(country.mapId, country);
+      }
+    });
+    return map;
+  }, [countries]);
+
   // Helper to get color based on country data
   const getFillColor = (featureId: string) => {
-    const myId = NUMERIC_TO_ID[featureId];
-    if (!myId) return "rgba(255, 255, 255, 0.6)"; // Default for non-visa countries
-
-    const country = countries.find(c => c.id === myId);
-    if (!country) return "rgba(255, 255, 255, 0.6)";
+    const country = countriesByMapId.get(featureId);
+    if (!country) return showAllCountries ? "rgba(148, 163, 184, 0.35)" : "rgba(255, 255, 255, 0.6)";
 
     switch (country.type) {
       case VisaType.MUTUAL_FREE:
@@ -70,11 +65,8 @@ const WorldMap: React.FC<WorldMapProps> = ({ countries, onCountrySelect }) => {
   };
 
   const getHoverColor = (featureId: string) => {
-    const myId = NUMERIC_TO_ID[featureId];
-    if (!myId) return "rgba(226, 232, 240, 0.8)"; // Slate-200 for default
-
-    const country = countries.find(c => c.id === myId);
-    if (!country) return "rgba(226, 232, 240, 0.8)";
+    const country = countriesByMapId.get(featureId);
+    if (!country) return showAllCountries ? "rgba(148, 163, 184, 0.55)" : "rgba(226, 232, 240, 0.8)"; // Slate-200 for default
 
     switch (country.type) {
       case VisaType.MUTUAL_FREE:
@@ -124,11 +116,8 @@ const WorldMap: React.FC<WorldMapProps> = ({ countries, onCountrySelect }) => {
          d3.select(this).attr("fill", getFillColor(d.id));
       })
       .on("click", (event, d: any) => {
-        const myId = NUMERIC_TO_ID[d.id];
-        if (myId) {
-          const country = countries.find(c => c.id === myId);
-          if (country) onCountrySelect(country);
-        }
+        const country = countriesByMapId.get(String(d.id));
+        if (country) onCountrySelect(country);
       });
 
     // Create Markers (Using Data Binding)
@@ -207,7 +196,7 @@ const WorldMap: React.FC<WorldMapProps> = ({ countries, onCountrySelect }) => {
         return `translate(${projected[0]},${projected[1]})`;
     });
 
-  }, [geoData, countries, dimensions, onCountrySelect]);
+  }, [geoData, countries, countriesByMapId, dimensions, onCountrySelect, showAllCountries]);
 
   return (
     <div ref={containerRef} className="w-full h-full overflow-hidden relative">

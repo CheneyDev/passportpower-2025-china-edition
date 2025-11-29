@@ -15,6 +15,7 @@ export enum VisaType {
 
 export interface CountryData {
   id: string;
+  mapId?: string; // ISO numeric id for topojson features
   name: string;
   flag: string;
   region: Region;

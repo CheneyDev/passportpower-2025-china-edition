@@ -1,29 +1,79 @@
-import React, { useMemo, useState } from 'react';
-import { COUNTRIES } from './constants';
+import React, { useEffect, useMemo, useState } from 'react';
+import * as topojson from 'topojson-client';
+import * as d3 from 'd3';
+import { COUNTRIES, GEO_URL } from './constants';
 import { CountryData, Region, VisaType } from './types';
 import WorldMap from './components/WorldMap';
 import CountryCard from './components/CountryCard';
+import { ID_TO_NUMERIC } from './countryMapping';
 
 const App: React.FC = () => {
   const [activeRegion, setActiveRegion] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAllCountries, setShowAllCountries] = useState<boolean>(false);
+  const [allCountries, setAllCountries] = useState<CountryData[]>(() =>
+    COUNTRIES.map(country => ({ ...country, mapId: ID_TO_NUMERIC[country.id] ?? country.id }))
+  );
+
+  // Load global country list for "show all" mode using topojson so that every nation is represented
+  useEffect(() => {
+    const loadGeoCountries = async () => {
+      try {
+        const response = await fetch(GEO_URL);
+        const topoData = await response.json();
+        const featureCollection = topojson.feature(topoData, topoData.objects.countries) as any;
+
+        const existingByMapId = new Map(
+          COUNTRIES.map(country => {
+            const mapId = ID_TO_NUMERIC[country.id];
+            return [mapId ?? country.id, { ...country, mapId: mapId ?? country.id }];
+          })
+        );
+
+        const missingCountries: CountryData[] = featureCollection.features
+          .filter((feature: any) => !existingByMapId.has(String(feature.id)))
+          .map((feature: any) => {
+            const centroid = d3.geoCentroid(feature) as [number, number];
+            return {
+              id: `UNKNOWN_${feature.id}`,
+              mapId: String(feature.id),
+              name: feature.properties?.name ?? '未知国家/地区',
+              flag: '🏳️',
+              region: inferRegionFromCoordinates(centroid),
+              type: VisaType.OTHER,
+              days: '-',
+              note: '签证信息待补充',
+              coordinates: centroid,
+            } as CountryData;
+          });
+
+        setAllCountries([...existingByMapId.values(), ...missingCountries]);
+      } catch (error) {
+        console.error('Failed to load global country list', error);
+      }
+    };
+
+    loadGeoCountries();
+  }, []);
 
   // Derived Statistics
   const stats = useMemo(() => {
     return {
-      total: COUNTRIES.length,
-      visaFree: COUNTRIES.filter(c => c.type === VisaType.VISA_FREE || c.type === VisaType.MUTUAL_FREE).length,
-      voa: COUNTRIES.filter(c => c.type === VisaType.VOA).length,
+      total: allCountries.length,
+      visaFree: allCountries.filter(c => c.type === VisaType.VISA_FREE || c.type === VisaType.MUTUAL_FREE).length,
+      voa: allCountries.filter(c => c.type === VisaType.VOA).length,
     };
-  }, []);
+  }, [allCountries]);
 
   const primaryCountries = useMemo(
-    () => COUNTRIES.filter(c => [VisaType.MUTUAL_FREE, VisaType.VISA_FREE, VisaType.VOA].includes(c.type)),
-    []
+    () => allCountries.filter(c => [VisaType.MUTUAL_FREE, VisaType.VISA_FREE, VisaType.VOA].includes(c.type)),
+    [allCountries]
   );
 
-  const scopedCountries = useMemo(() => (showAllCountries ? COUNTRIES : primaryCountries), [showAllCountries, primaryCountries]);
+  const scopedCountries = useMemo(
+    () => (showAllCountries ? allCountries : primaryCountries),
+    [allCountries, primaryCountries, showAllCountries]
+  );
 
   // Filtering Logic
   const filteredCountries = useMemo(() => {
@@ -103,6 +153,7 @@ const App: React.FC = () => {
         {/* Map Component */}
         <WorldMap
           countries={scopedCountries} // Toggle between签证优惠国家和全部国家
+          showAllCountries={showAllCountries}
           onCountrySelect={handleCountrySelect}
         />
 
@@ -230,6 +281,14 @@ const App: React.FC = () => {
       </section>
     </div>
   );
+};
+
+const inferRegionFromCoordinates = ([lon, lat]: [number, number]): Region => {
+  if (lat < -10) return Region.AMERICAS_OCEANIA;
+  if (lon > -30 && lon < 60 && lat >= -40 && lat <= 60) return Region.AFRICA;
+  if (lon >= -30 && lon <= 50 && lat > 40) return Region.EUROPE;
+  if (lon >= 50 && lon <= 180) return Region.ASIA;
+  return Region.AMERICAS_OCEANIA;
 };
 
 export default App;
