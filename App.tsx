@@ -7,6 +7,9 @@ import { CountryData, Region, VisaType } from './types';
 import WorldMap from './components/WorldMap';
 import CountryCard from './components/CountryCard';
 import { ID_TO_NUMERIC } from './countryMapping';
+import zhLocale from 'i18n-iso-countries/langs/zh.json';
+
+countries.registerLocale(zhLocale);
 
 const App: React.FC = () => {
   const [activeRegion, setActiveRegion] = useState<string>('ALL');
@@ -25,6 +28,15 @@ const App: React.FC = () => {
     return alpha2
       .toUpperCase()
       .replace(/./g, char => String.fromCodePoint(127397 + char.charCodeAt(0)));
+  };
+
+  const getChineseNameFromNumericId = (numericId: string | number | undefined) => {
+    if (!numericId) return undefined;
+
+    const alpha2 = countries.numericToAlpha2(String(numericId));
+    if (!alpha2) return undefined;
+
+    return countries.getName(alpha2, 'zh');
   };
 
   // Load global country list for "show all" mode using topojson so that every nation is represented
@@ -46,10 +58,11 @@ const App: React.FC = () => {
           .filter((feature: any) => !existingByMapId.has(String(feature.id)))
           .map((feature: any) => {
             const centroid = d3.geoCentroid(feature) as [number, number];
+            const chineseName = getChineseNameFromNumericId(feature.id);
             return {
               id: `UNKNOWN_${feature.id}`,
               mapId: String(feature.id),
-              name: feature.properties?.name ?? '未知国家/地区',
+              name: chineseName ?? feature.properties?.name ?? '未知国家/地区',
               flag: getFlagFromNumericId(feature.id),
               region: inferRegionFromCoordinates(centroid),
               type: VisaType.OTHER,

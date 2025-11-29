@@ -51,7 +51,7 @@ const WorldMap: React.FC<WorldMapProps> = ({ countries, showAllCountries, onCoun
   // Helper to get color based on country data
   const getFillColor = (featureId: string) => {
     const country = countriesByMapId.get(featureId);
-    if (!country) return showAllCountries ? "rgba(148, 163, 184, 0.35)" : "rgba(255, 255, 255, 0.6)";
+    if (!country) return "rgba(255, 255, 255, 0.9)";
 
     switch (country.type) {
       case VisaType.MUTUAL_FREE:
@@ -60,13 +60,13 @@ const WorldMap: React.FC<WorldMapProps> = ({ countries, showAllCountries, onCoun
       case VisaType.VOA:
         return "rgba(251, 146, 60, 0.6)"; // Orange-400, 0.6 opacity
       default:
-        return "rgba(96, 165, 250, 0.6)"; // Blue-400, 0.6 opacity
+        return "rgba(255, 255, 255, 0.95)"; // Neutral white for non-visa-free countries
     }
   };
 
   const getHoverColor = (featureId: string) => {
     const country = countriesByMapId.get(featureId);
-    if (!country) return showAllCountries ? "rgba(148, 163, 184, 0.55)" : "rgba(226, 232, 240, 0.8)"; // Slate-200 for default
+    if (!country) return "rgba(148, 163, 184, 0.35)"; // subtle slate tint on hover
 
     switch (country.type) {
       case VisaType.MUTUAL_FREE:
@@ -75,7 +75,7 @@ const WorldMap: React.FC<WorldMapProps> = ({ countries, showAllCountries, onCoun
       case VisaType.VOA:
         return "rgba(249, 115, 22, 0.8)"; // Orange-500 strong
       default:
-        return "rgba(59, 130, 246, 0.8)"; // Blue-500 strong
+        return "rgba(148, 163, 184, 0.4)"; // Light slate hover for non-visa-free
     }
   };
 
@@ -133,7 +133,7 @@ const WorldMap: React.FC<WorldMapProps> = ({ countries, showAllCountries, onCoun
       });
 
     // 1. Pulse Effect Circle
-    markers.append("circle")
+  markers.append("circle")
       .attr("r", 4)
       .attr("fill", d => getColorByType(d.type))
       .attr("fill-opacity", 0.3)
@@ -232,7 +232,7 @@ const WorldMap: React.FC<WorldMapProps> = ({ countries, showAllCountries, onCoun
 const getColorByType = (type: VisaType): string => {
   if (type === VisaType.MUTUAL_FREE || type === VisaType.VISA_FREE) return "#22c55e"; // green-500
   if (type === VisaType.VOA) return "#f97316"; // orange-500
-  return "#3b82f6"; // blue-500
+  return "#94a3b8"; // slate-400 for other types
 };
 
 export default WorldMap;
