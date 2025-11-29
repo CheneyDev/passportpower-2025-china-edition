@@ -53,6 +53,11 @@ const WorldMap: React.FC<WorldMapProps> = ({ countries, showAllCountries, onCoun
     const country = countriesByMapId.get(featureId);
     if (!country) return "rgba(255, 255, 255, 0.9)";
 
+    const isVisaFree = country.type === VisaType.MUTUAL_FREE || country.type === VisaType.VISA_FREE;
+    if (showAllCountries && !isVisaFree) {
+      return "rgba(255, 255, 255, 0.95)"; // Keep non-visa-free countries unfilled in show-all mode
+    }
+
     switch (country.type) {
       case VisaType.MUTUAL_FREE:
       case VisaType.VISA_FREE:
@@ -60,7 +65,7 @@ const WorldMap: React.FC<WorldMapProps> = ({ countries, showAllCountries, onCoun
       case VisaType.VOA:
         return "rgba(251, 146, 60, 0.6)"; // Orange-400, 0.6 opacity
       default:
-        return "rgba(255, 255, 255, 0.95)"; // Neutral white for non-visa-free countries
+        return "rgba(255, 255, 255, 0.95)"; // Neutral white for other countries
     }
   };
 

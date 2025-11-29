@@ -15,8 +15,18 @@ const App: React.FC = () => {
   const [activeRegion, setActiveRegion] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
   const [showAllCountries, setShowAllCountries] = useState<boolean>(false);
+  const ensureChineseName = (country: CountryData): CountryData => {
+    const mapId = country.mapId ?? ID_TO_NUMERIC[country.id] ?? country.id;
+    const chineseName = getChineseNameFromNumericId(mapId);
+    return {
+      ...country,
+      mapId: String(mapId),
+      name: chineseName ?? country.name,
+    };
+  };
+
   const [allCountries, setAllCountries] = useState<CountryData[]>(() =>
-    COUNTRIES.map(country => ({ ...country, mapId: ID_TO_NUMERIC[country.id] ?? country.id }))
+    COUNTRIES.map(country => ensureChineseName({ ...country, mapId: ID_TO_NUMERIC[country.id] ?? country.id }))
   );
 
   const getFlagFromNumericId = (numericId: string | number | undefined) => {
@@ -47,10 +57,15 @@ const App: React.FC = () => {
         const topoData = await response.json();
         const featureCollection = topojson.feature(topoData, topoData.objects.countries) as any;
 
+        const normalizedExisting = COUNTRIES.map(country => {
+          const mapId = ID_TO_NUMERIC[country.id];
+          return ensureChineseName({ ...country, mapId: mapId ?? country.id });
+        });
+
         const existingByMapId = new Map(
-          COUNTRIES.map(country => {
-            const mapId = ID_TO_NUMERIC[country.id];
-            return [mapId ?? country.id, { ...country, mapId: mapId ?? country.id }];
+          normalizedExisting.map(country => {
+            const mapId = country.mapId ?? country.id;
+            return [mapId, country];
           })
         );
 
