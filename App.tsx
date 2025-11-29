@@ -1,6 +1,7 @@
 import React, { useEffect, useMemo, useState } from 'react';
 import * as topojson from 'topojson-client';
 import * as d3 from 'd3';
+import countries from 'i18n-iso-countries';
 import { COUNTRIES, GEO_URL } from './constants';
 import { CountryData, Region, VisaType } from './types';
 import WorldMap from './components/WorldMap';
@@ -14,6 +15,17 @@ const App: React.FC = () => {
   const [allCountries, setAllCountries] = useState<CountryData[]>(() =>
     COUNTRIES.map(country => ({ ...country, mapId: ID_TO_NUMERIC[country.id] ?? country.id }))
   );
+
+  const getFlagFromNumericId = (numericId: string | number | undefined) => {
+    if (!numericId) return '🏳️';
+
+    const alpha2 = countries.numericToAlpha2(String(numericId));
+    if (!alpha2) return '🏳️';
+
+    return alpha2
+      .toUpperCase()
+      .replace(/./g, char => String.fromCodePoint(127397 + char.charCodeAt(0)));
+  };
 
   // Load global country list for "show all" mode using topojson so that every nation is represented
   useEffect(() => {
@@ -38,7 +50,7 @@ const App: React.FC = () => {
               id: `UNKNOWN_${feature.id}`,
               mapId: String(feature.id),
               name: feature.properties?.name ?? '未知国家/地区',
-              flag: '🏳️',
+              flag: getFlagFromNumericId(feature.id),
               region: inferRegionFromCoordinates(centroid),
               type: VisaType.OTHER,
               days: '-',
