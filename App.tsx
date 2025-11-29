@@ -7,6 +7,7 @@ import CountryCard from './components/CountryCard';
 const App: React.FC = () => {
   const [activeRegion, setActiveRegion] = useState<string>('ALL');
   const [searchQuery, setSearchQuery] = useState<string>('');
+  const [showAllCountries, setShowAllCountries] = useState<boolean>(false);
 
   // Derived Statistics
   const stats = useMemo(() => {
@@ -17,10 +18,17 @@ const App: React.FC = () => {
     };
   }, []);
 
+  const primaryCountries = useMemo(
+    () => COUNTRIES.filter(c => [VisaType.MUTUAL_FREE, VisaType.VISA_FREE, VisaType.VOA].includes(c.type)),
+    []
+  );
+
+  const scopedCountries = useMemo(() => (showAllCountries ? COUNTRIES : primaryCountries), [showAllCountries, primaryCountries]);
+
   // Filtering Logic
   const filteredCountries = useMemo(() => {
-    let data = COUNTRIES;
-    
+    let data = scopedCountries;
+
     // Filter by Region
     if (activeRegion !== 'ALL') {
       data = data.filter(c => c.region === activeRegion);
@@ -33,7 +41,7 @@ const App: React.FC = () => {
     }
 
     return data;
-  }, [activeRegion, searchQuery]);
+  }, [activeRegion, scopedCountries, searchQuery]);
 
   const regions = ['ALL', ...Object.values(Region)];
 
@@ -93,8 +101,8 @@ const App: React.FC = () => {
         </header>
 
         {/* Map Component */}
-        <WorldMap 
-          countries={COUNTRIES} // Show markers for all countries initially
+        <WorldMap
+          countries={scopedCountries} // Toggle between签证优惠国家和全部国家
           onCountrySelect={handleCountrySelect}
         />
 
@@ -154,11 +162,30 @@ const App: React.FC = () => {
                    <button 
                     onClick={() => setSearchQuery('')}
                     className="absolute right-3 top-2.5 text-slate-400 hover:text-slate-600 bg-slate-200/50 hover:bg-slate-200 rounded-full p-0.5 w-5 h-5 flex items-center justify-center transition-colors"
-                   >
-                     <span className="text-[10px] font-bold">✕</span>
-                   </button>
-                 )}
+                    >
+                      <span className="text-[10px] font-bold">✕</span>
+                    </button>
+                  )}
              </div>
+
+             {/* Toggle All Countries */}
+             <button
+               onClick={() => setShowAllCountries(prev => !prev)}
+               className={`flex items-center gap-2 px-4 py-2.5 rounded-xl text-[13px] font-bold transition-all duration-200 whitespace-nowrap border ${
+                 showAllCountries
+                   ? 'bg-blue-600 text-white border-blue-700 shadow-md shadow-blue-500/20'
+                   : 'bg-white text-slate-600 border-slate-200 hover:bg-slate-50'
+               }`}
+             >
+               <span className="inline-flex h-5 w-10 rounded-full bg-slate-200 p-0.5 items-center">
+                 <span
+                   className={`h-4 w-4 rounded-full bg-white shadow transition-all duration-200 ${
+                     showAllCountries ? 'translate-x-5 bg-blue-500 shadow-blue-200' : 'translate-x-0'
+                   }`}
+                 ></span>
+               </span>
+               {showAllCountries ? '显示全部国家' : '仅显示免签/落地签'}
+             </button>
           </div>
         </div>
 
